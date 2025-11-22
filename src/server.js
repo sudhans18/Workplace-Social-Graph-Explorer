@@ -8,6 +8,9 @@ import webhookRouter from './routes/webhook.js';
 import graphRouter from './routes/graph.js';
 import insightsRouter from './routes/insights.js';
 import { log } from './utils/logger.js';
+import cliqCommandsRouter from './routes/cliqCommands.js';
+import digestRouter from './routes/digest.js';
+import { getAppBaseUrl } from './utils/config.js';
 
 dotenv.config();
 
@@ -27,6 +30,8 @@ app.use(express.json());
 app.use(webhookRouter);
 app.use(graphRouter);
 app.use(insightsRouter);
+app.use('/cliq', cliqCommandsRouter);
+app.use(digestRouter);
 
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -40,4 +45,5 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   log(`Server listening on http://localhost:${PORT}`);
+  log('APP_BASE_URL', getAppBaseUrl());
 });
