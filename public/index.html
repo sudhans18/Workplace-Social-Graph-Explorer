@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Workplace Social Graph Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: #0b1020;
+      color: #f5f5f5;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    header {
+      padding: 12px 20px;
+      background: linear-gradient(90deg, #141b2f, #1b2540);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      z-index: 1;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    header p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+    #cy-container {
+      flex: 1;
+      position: relative;
+    }
+    #cy {
+      position: absolute;
+      inset: 0;
+    }
+    #status {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      padding: 6px 10px;
+      font-size: 12px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 4px;
+      backdrop-filter: blur(6px);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Workplace Social Graph Explorer</h1>
+      <p>Visualizing interactions from Zoho Cliq</p>
+    </header>
+    <div id="cy-container">
+      <div id="cy"></div>
+      <div id="status">Loading graph...</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/cytoscape@3.28.0/dist/cytoscape.min.js"></script>
+  <script>
+    async function fetchGraph() {
+      const status = document.getElementById('status');
+      try {
+        const res = await fetch('/graph/latest');
+        if (!res.ok) {
+          throw new Error('Failed to fetch graph: ' + res.status);
+        }
+        const payload = await res.json();
+        status.textContent = 'Graph loaded';
+        return {
+          graph: payload.graph || { nodes: [], edges: [] },
+          stats: payload.stats || null,
+        };
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Error loading graph';
+        return { graph: { nodes: [], edges: [] }, stats: null };
+      }
+    }
+
+    function computeNodeAttributes(graph) {
+      const nodes = graph.nodes || [];
+      const maxWeightedDegree = nodes.reduce(
+        (max, node) => Math.max(max, node.weightedDegree || 0),
+        0
+      );
+
+      const clusterColorCache = new Map();
+      const getClusterColor = (clusterId = 0) => {
+        if (!clusterColorCache.has(clusterId)) {
+          const hue = (clusterId * 137.508) % 360;
+          clusterColorCache.set(clusterId, `hsl(${hue}, 65%, 55%)`);
+        }
+        return clusterColorCache.get(clusterId);
+      };
+
+      return nodes.map((node) => {
+        const weighted = node.weightedDegree || 0;
+        const normalized = maxWeightedDegree > 0 ? weighted / maxWeightedDegree : 0;
+        const size = 24 + normalized * 36;
+        return {
+          data: {
+            id: node.id,
+            label: `${node.id}`,
+            size,
+            color: getClusterColor(node.clusterId),
+          },
+        };
+      });
+    }
+
+    function buildElements(graph) {
+      const nodes = computeNodeAttributes(graph);
+
+      const edges = (graph.edges || []).map((edge, index) => ({
+        data: {
+          id: edge.from + '->' + edge.to + ':' + index,
+          source: edge.from,
+          target: edge.to,
+          weight: edge.weight || 1,
+        },
+      }));
+
+      return { nodes, edges };
+    }
+
+    async function init() {
+      const { graph } = await fetchGraph();
+      const { nodes, edges } = buildElements(graph);
+
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: {
+          nodes,
+          edges,
+        },
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': 'data(color)',
+              'width': 'data(size)',
+              'height': 'data(size)',
+              'label': 'data(label)',
+              'color': '#ffffff',
+              'font-size': '10px',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'overlay-opacity': 0,
+            },
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 'mapData(weight, 1, 10, 1, 6)',
+              'line-color': 'rgba(255,255,255,0.3)',
+              'curve-style': 'haystack',
+              'haystack-radius': 0.5,
+            },
+          },
+          {
+            selector: 'node:selected',
+            style: {
+              'border-width': 3,
+              'border-color': '#ffffff',
+              'shadow-blur': 12,
+              'shadow-color': '#000000',
+              'shadow-opacity': 0.7,
+              'shadow-offset-x': 0,
+              'shadow-offset-y': 0,
+            },
+          },
+        ],
+        layout: {
+          name: 'cose',
+          animate: true,
+          padding: 20,
+        },
+      });
+
+      cy.on('tap', 'node', (evt) => {
+        const id = evt.target.id();
+        alert('Node: ' + id);
+      });
+    }
+
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
