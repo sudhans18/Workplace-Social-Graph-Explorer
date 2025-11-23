@@ -5,71 +5,472 @@
   <title>Workplace Social Graph Explorer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    * {
+      box-sizing: border-box;
+    }
+    
     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background-color: #0b1020;
-      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
     }
+
     #app {
       display: flex;
       flex-direction: column;
       height: 100%;
     }
+
+    /* Header */
     header {
-      padding: 12px 20px;
-      background: linear-gradient(90deg, #141b2f, #1b2540);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-      z-index: 1;
+      padding: 16px 24px;
+      background-color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 10;
     }
+
     header h1 {
       margin: 0;
-      font-size: 18px;
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a1a1a;
     }
+
     header p {
       margin: 4px 0 0;
-      font-size: 13px;
-      opacity: 0.7;
+      font-size: 14px;
+      color: #666;
     }
+
+    .mode-badge {
+      display: inline-block;
+      margin-left: 12px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 12px;
+      background-color: #e3f2fd;
+      color: #1976d2;
+      border: 1px solid #90caf9;
+    }
+
+    .mode-badge.anonymized {
+      background-color: #fff3e0;
+      color: #e65100;
+      border-color: #ffb74d;
+    }
+
+    /* Main content area */
+    #main-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    /* Graph panel */
+    #graph-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    #graph-toolbar {
+      padding: 12px 16px;
+      background-color: #fafafa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      font-size: 14px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fff;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background-color: #f0f0f0;
+      border-color: #bbb;
+    }
+
+    .btn:active {
+      background-color: #e0e0e0;
+    }
+
     #cy-container {
       flex: 1;
       position: relative;
+      min-height: 0;
     }
+
     #cy {
       position: absolute;
       inset: 0;
+      background-color: #fafafa;
     }
+
     #status {
       position: absolute;
       left: 16px;
       bottom: 16px;
-      padding: 6px 10px;
+      padding: 8px 12px;
       font-size: 12px;
-      background: rgba(0,0,0,0.6);
+      background-color: rgba(255, 255, 255, 0.9);
       border-radius: 4px;
-      backdrop-filter: blur(6px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      pointer-events: none;
+    }
+
+    /* Insights panel */
+    #insights-panel {
+      width: 380px;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    #insights-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      color: #1a1a1a;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 8px;
+    }
+
+    .section-content {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-item {
+      padding: 12px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      border-left: 3px solid #4a90e2;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* Lists */
+    .connector-list, .cluster-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .connector-item, .cluster-item {
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+      border-left: 3px solid #50c878;
+    }
+
+    .connector-item:last-child, .cluster-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .connector-name {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .connector-meta {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .cluster-header {
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .cluster-nodes {
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+    }
+
+    /* Selected node details */
+    #selected-node-details {
+      padding: 12px;
+      background-color: #f0f7ff;
+      border-radius: 4px;
+      border-left: 3px solid #4a90e2;
+    }
+
+    #selected-node-details.empty {
+      background-color: #f9f9f9;
+      border-left-color: #ddd;
+      color: #666;
+      font-style: italic;
+    }
+
+    .node-detail-row {
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .node-detail-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .node-detail-label {
+      font-weight: 600;
+      color: #666;
+    }
+
+    .node-detail-value {
+      color: #1a1a1a;
+    }
+
+    /* Insights section */
+    .insights-summary, .insights-recommendations {
+      margin-bottom: 16px;
+    }
+
+    .insights-summary ul, .insights-recommendations ul {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .insights-summary li, .insights-recommendations li {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .ai-polished-box {
+      padding: 12px;
+      background-color: #fff8e1;
+      border-left: 3px solid #ffc107;
+      border-radius: 4px;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .error-message {
+      padding: 12px;
+      background-color: #ffebee;
+      border-left: 3px solid #f44336;
+      border-radius: 4px;
+      color: #c62828;
+      font-size: 13px;
+    }
+
+    .empty-state {
+      color: #999;
+      font-style: italic;
+      font-size: 13px;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      #main-content {
+        flex-direction: column;
+        padding: 8px;
+        gap: 8px;
+      }
+
+      #insights-panel {
+        width: 100%;
+        max-height: 50vh;
+      }
+
+      #graph-panel {
+        min-height: 50vh;
+      }
+    }
+
+    /* Cytoscape selected node style */
+    .node-selected {
+      border-width: 4px !important;
+      border-color: #4a90e2 !important;
+      border-style: solid !important;
     }
   </style>
 </head>
 <body>
   <div id="app">
     <header>
-      <h1>Workplace Social Graph Explorer</h1>
-      <p>Visualizing interactions from Zoho Cliq</p>
+      <h1>Workplace Social Graph Explorer <span id="mode-badge" class="mode-badge" style="display: none;">Mode: Real IDs</span></h1>
+      <p>Cliq collaboration insights (demo UI)</p>
     </header>
-    <div id="cy-container">
-      <div id="cy"></div>
-      <div id="status">Loading graph...</div>
+
+    <div id="main-content">
+      <!-- Graph Panel -->
+      <div id="graph-panel">
+        <div id="graph-toolbar">
+          <button class="btn" id="refresh-btn">Refresh Graph</button>
+          <button class="btn" id="fit-btn">Fit Graph</button>
+        </div>
+        <div id="cy-container">
+          <div id="cy"></div>
+          <div id="status">Loading graph...</div>
+        </div>
+      </div>
+
+      <!-- Insights Panel -->
+      <div id="insights-panel">
+        <div id="insights-content">
+          <!-- Summary Stats -->
+          <div class="section">
+            <h2 class="section-title">Summary Stats</h2>
+            <div class="section-content" id="stats-content">
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-label">Total Users</div>
+                  <div class="stat-value" id="stat-node-count">-</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">Total Interactions</div>
+                  <div class="stat-value" id="stat-edge-count">-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Connectors -->
+          <div class="section">
+            <h2 class="section-title">Top Connectors</h2>
+            <div class="section-content" id="top-connectors-content">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+
+          <!-- Clusters -->
+          <div class="section">
+            <h2 class="section-title">Clusters</h2>
+            <div class="section-content" id="clusters-content">
+              <div class="empty-state">Loading...</div>
+            </div>
+          </div>
+
+          <!-- Selected Node Details -->
+          <div class="section">
+            <h2 class="section-title">Selected Node</h2>
+            <div class="section-content">
+              <div id="selected-node-details" class="empty">
+                Click a node to see details
+              </div>
+            </div>
+          </div>
+
+          <!-- Demo Scenarios -->
+          <div class="section">
+            <h2 class="section-title">Demo Scenarios</h2>
+            <div class="section-content">
+              <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                Load synthetic data to test the system
+              </p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn" id="demo-healthy-btn" style="width: 100%;">
+                  Load Healthy
+                </button>
+                <button class="btn" id="demo-siloed-btn" style="width: 100%;">
+                  Load Siloed
+                </button>
+                <button class="btn" id="demo-overloaded-btn" style="width: 100%;">
+                  Load Overloaded
+                </button>
+              </div>
+              <div id="demo-status" style="margin-top: 8px; font-size: 12px; color: #666;"></div>
+            </div>
+          </div>
+
+          <!-- Org Health Insights -->
+          <div class="section">
+            <h2 class="section-title">Org Health Insights</h2>
+            <div class="section-content">
+              <button class="btn" id="show-insights-btn" style="width: 100%; margin-bottom: 12px;">
+                Show Insights
+              </button>
+              <div id="insights-display">
+                <div class="empty-state">Click "Show Insights" to load</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="https://unpkg.com/cytoscape@3.28.0/dist/cytoscape.min.js"></script>
   <script>
-    async function fetchGraph() {
+    // Global state
+    let cy = null;
+    let currentGraph = null;
+    let currentStats = null;
+    let nodeDataMap = new Map();
+
+    // Color palette for clusters
+    const CLUSTER_COLORS = [
+      '#4a90e2', '#50c878', '#ff6b6b', '#ffa500', '#9b59b6',
+      '#1abc9c', '#e74c3c', '#f39c12', '#3498db', '#2ecc71'
+    ];
+
+    function getClusterColor(clusterId = 0) {
+      return CLUSTER_COLORS[clusterId % CLUSTER_COLORS.length];
+    }
+
+    // Fetch graph data from backend
+    async function fetchGraphData() {
       const status = document.getElementById('status');
       try {
+        status.textContent = 'Loading graph...';
         const res = await fetch('/graph/latest');
         if (!res.ok) {
           throw new Error('Failed to fetch graph: ' + res.status);
@@ -81,116 +482,486 @@
           stats: payload.stats || null,
         };
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching graph:', err);
         status.textContent = 'Error loading graph';
         return { graph: { nodes: [], edges: [] }, stats: null };
       }
     }
 
+    // Compute node attributes for Cytoscape
     function computeNodeAttributes(graph) {
       const nodes = graph.nodes || [];
+      if (nodes.length === 0) return [];
+
+      // Build node data map
+      nodeDataMap.clear();
+      nodes.forEach(node => {
+        nodeDataMap.set(node.id, node);
+      });
+
+      // Find max weighted degree for sizing
       const maxWeightedDegree = nodes.reduce(
         (max, node) => Math.max(max, node.weightedDegree || 0),
         0
       );
 
-      const clusterColorCache = new Map();
-      const getClusterColor = (clusterId = 0) => {
-        if (!clusterColorCache.has(clusterId)) {
-          const hue = (clusterId * 137.508) % 360;
-          clusterColorCache.set(clusterId, `hsl(${hue}, 65%, 55%)`);
-        }
-        return clusterColorCache.get(clusterId);
-      };
-
       return nodes.map((node) => {
         const weighted = node.weightedDegree || 0;
         const normalized = maxWeightedDegree > 0 ? weighted / maxWeightedDegree : 0;
-        const size = 24 + normalized * 36;
+        const size = 30 + normalized * 40; // Base size 30, up to 70
+        const color = getClusterColor(node.clusterId);
+
         return {
           data: {
             id: node.id,
-            label: `${node.id}`,
-            size,
-            color: getClusterColor(node.clusterId),
+            label: node.id,
+            weightedDegree: weighted,
+            clusterId: node.clusterId,
+          },
+          style: {
+            width: size,
+            height: size,
+            'background-color': color,
           },
         };
       });
     }
 
+    // Build Cytoscape elements
     function buildElements(graph) {
       const nodes = computeNodeAttributes(graph);
 
-      const edges = (graph.edges || []).map((edge, index) => ({
-        data: {
-          id: edge.from + '->' + edge.to + ':' + index,
-          source: edge.from,
-          target: edge.to,
-          weight: edge.weight || 1,
-        },
-      }));
+      const edges = (graph.edges || []).map((edge, index) => {
+        const maxWeight = Math.max(...(graph.edges || []).map(e => e.weight || 1), 1);
+        const normalizedWeight = (edge.weight || 1) / maxWeight;
+        const width = 1 + normalizedWeight * 5; // Width from 1 to 6
+
+        return {
+          data: {
+            id: `edge-${edge.from}-${edge.to}-${index}`,
+            source: edge.from,
+            target: edge.to,
+            weight: edge.weight || 1,
+          },
+          style: {
+            width: width,
+            'line-color': 'rgba(100, 100, 100, 0.4)',
+          },
+        };
+      });
 
       return { nodes, edges };
     }
 
-    async function init() {
-      const { graph } = await fetchGraph();
+    // Initialize or update Cytoscape graph
+    function renderGraph(graph) {
       const { nodes, edges } = buildElements(graph);
+      currentGraph = graph;
 
-      const cy = cytoscape({
-        container: document.getElementById('cy'),
-        elements: {
-          nodes,
-          edges,
-        },
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': 'data(color)',
-              'width': 'data(size)',
-              'height': 'data(size)',
-              'label': 'data(label)',
-              'color': '#ffffff',
-              'font-size': '10px',
-              'text-valign': 'center',
-              'text-halign': 'center',
-              'overlay-opacity': 0,
-            },
+      if (!cy) {
+        // Initialize Cytoscape
+        cy = cytoscape({
+          container: document.getElementById('cy'),
+          elements: {
+            nodes,
+            edges,
           },
-          {
-            selector: 'edge',
-            style: {
-              'width': 'mapData(weight, 1, 10, 1, 6)',
-              'line-color': 'rgba(255,255,255,0.3)',
-              'curve-style': 'haystack',
-              'haystack-radius': 0.5,
+          style: [
+            {
+              selector: 'node',
+              style: {
+                'label': 'data(label)',
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'color': '#fff',
+                'font-size': '11px',
+                'font-weight': '600',
+                'text-outline-width': 2,
+                'text-outline-color': '#000',
+                'border-width': 2,
+                'border-color': '#fff',
+                'overlay-opacity': 0,
+              },
             },
-          },
-          {
-            selector: 'node:selected',
-            style: {
-              'border-width': 3,
-              'border-color': '#ffffff',
-              'shadow-blur': 12,
-              'shadow-color': '#000000',
-              'shadow-opacity': 0.7,
-              'shadow-offset-x': 0,
-              'shadow-offset-y': 0,
+            {
+              selector: 'edge',
+              style: {
+                'curve-style': 'bezier',
+                'target-arrow-shape': 'triangle',
+                'target-arrow-color': 'rgba(100, 100, 100, 0.4)',
+                'opacity': 0.6,
+              },
             },
+            {
+              selector: 'node:selected',
+              style: {
+                'border-width': 4,
+                'border-color': '#4a90e2',
+                'z-index': 999,
+              },
+            },
+          ],
+          layout: {
+            name: 'cose',
+            animate: true,
+            animationDuration: 1000,
+            padding: 30,
+            nodeRepulsion: 4500,
+            idealEdgeLength: 100,
           },
-        ],
-        layout: {
+        });
+
+        // Attach node click handler
+        attachNodeClickHandler();
+      } else {
+        // Update existing graph
+        cy.elements().remove();
+        cy.add({ nodes, edges });
+        cy.layout({
           name: 'cose',
           animate: true,
-          padding: 20,
-        },
-      });
+          animationDuration: 800,
+          padding: 30,
+          nodeRepulsion: 4500,
+          idealEdgeLength: 100,
+        }).run();
+      }
+
+      // Fit graph after render
+      setTimeout(() => fitGraph(), 500);
+    }
+
+    // Fit graph to viewport
+    function fitGraph() {
+      if (cy) {
+        cy.fit(undefined, 50); // 50px padding
+      }
+    }
+
+    // Attach node click handler
+    function attachNodeClickHandler() {
+      if (!cy) return;
 
       cy.on('tap', 'node', (evt) => {
-        const id = evt.target.id();
-        alert('Node: ' + id);
+        const node = evt.target;
+        const nodeId = node.id();
+
+        // Remove previous selection
+        cy.elements().removeClass('selected');
+        // Add selection to clicked node
+        node.addClass('selected');
+
+        // Update selected node details
+        updateSelectedNodeDetails(nodeId);
       });
+
+      // Clear selection when clicking background
+      cy.on('tap', (evt) => {
+        if (evt.target === cy) {
+          cy.elements().removeClass('selected');
+          updateSelectedNodeDetails(null);
+        }
+      });
+    }
+
+    // Update selected node details panel
+    function updateSelectedNodeDetails(nodeId) {
+      const detailsEl = document.getElementById('selected-node-details');
+      
+      if (!nodeId || !nodeDataMap.has(nodeId)) {
+        detailsEl.className = 'empty';
+        detailsEl.textContent = 'Click a node to see details';
+        return;
+      }
+
+      const nodeData = nodeDataMap.get(nodeId);
+      detailsEl.className = '';
+
+      detailsEl.innerHTML = `
+        <div class="node-detail-row">
+          <span class="node-detail-label">ID:</span>
+          <span class="node-detail-value">${escapeHtml(nodeData.id)}</span>
+        </div>
+        <div class="node-detail-row">
+          <span class="node-detail-label">Degree:</span>
+          <span class="node-detail-value">${nodeData.degree || 0}</span>
+        </div>
+        <div class="node-detail-row">
+          <span class="node-detail-label">Weighted Degree:</span>
+          <span class="node-detail-value">${nodeData.weightedDegree || 0}</span>
+        </div>
+        <div class="node-detail-row">
+          <span class="node-detail-label">Betweenness:</span>
+          <span class="node-detail-value">${(nodeData.betweenness || 0).toFixed(2)}</span>
+        </div>
+        <div class="node-detail-row">
+          <span class="node-detail-label">Cluster ID:</span>
+          <span class="node-detail-value">${nodeData.clusterId ?? 0}</span>
+        </div>
+      `;
+    }
+
+    // Render stats in the insights panel
+    function renderStats(stats) {
+      currentStats = stats;
+      if (!stats) {
+        document.getElementById('stat-node-count').textContent = '-';
+        document.getElementById('stat-edge-count').textContent = '-';
+        return;
+      }
+
+      // Update summary stats
+      document.getElementById('stat-node-count').textContent = stats.nodeCount || 0;
+      document.getElementById('stat-edge-count').textContent = stats.edgeCount || 0;
+
+      // Update top connectors
+      const topConnectorsEl = document.getElementById('top-connectors-content');
+      const topConnectors = Array.isArray(stats.topConnectors) ? stats.topConnectors.slice(0, 5) : [];
+      
+      if (topConnectors.length === 0) {
+        topConnectorsEl.innerHTML = '<div class="empty-state">Not enough data yet</div>';
+      } else {
+        topConnectorsEl.innerHTML = `
+          <ul class="connector-list">
+            ${topConnectors.map(connector => `
+              <li class="connector-item">
+                <div class="connector-name">${escapeHtml(connector.id)}</div>
+                <div class="connector-meta">Weighted degree: ${connector.weightedDegree || 0} | Degree: ${connector.degree || 0}</div>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+      }
+
+      // Update clusters
+      const clustersEl = document.getElementById('clusters-content');
+      const clusters = Array.isArray(stats.clusters) ? stats.clusters : [];
+      
+      if (clusters.length === 0) {
+        clustersEl.innerHTML = '<div class="empty-state">No clusters found</div>';
+      } else {
+        const displayClusters = clusters.slice(0, 6); // Limit to 6 clusters
+        clustersEl.innerHTML = `
+          <ul class="cluster-list">
+            ${displayClusters.map(cluster => {
+              const nodePreview = cluster.nodes.slice(0, 3).map(n => escapeHtml(n)).join(', ');
+              const moreCount = cluster.nodes.length > 3 ? ` (+${cluster.nodes.length - 3} more)` : '';
+              return `
+                <li class="cluster-item">
+                  <div class="cluster-header">Cluster ${cluster.clusterId} — size ${cluster.size}</div>
+                  ${cluster.nodes.length > 0 ? `<div class="cluster-nodes">${nodePreview}${moreCount}</div>` : ''}
+                </li>
+              `;
+            }).join('')}
+          </ul>
+        `;
+        
+        if (clusters.length > 6) {
+          clustersEl.innerHTML += `<div style="margin-top: 8px; font-size: 12px; color: #666;">... and ${clusters.length - 6} more clusters</div>`;
+        }
+      }
+    }
+
+    // Fetch and display insights
+    async function fetchAndShowInsights() {
+      const insightsDisplayEl = document.getElementById('insights-display');
+      const btn = document.getElementById('show-insights-btn');
+      
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      insightsDisplayEl.innerHTML = '<div class="empty-state">Loading insights...</div>';
+
+      try {
+        const res = await fetch('/insights/latest');
+        if (!res.ok) {
+          throw new Error('Failed to fetch insights: ' + res.status);
+        }
+
+        const payload = await res.json();
+        
+        if (payload.status !== 'ok' || !payload.insights) {
+          throw new Error('Invalid response format');
+        }
+
+        const { ruleBased, aiPolished } = payload.insights;
+        let html = '';
+
+        // Rule-based summary points
+        if (ruleBased && Array.isArray(ruleBased.summaryPoints) && ruleBased.summaryPoints.length > 0) {
+          html += `
+            <div class="insights-summary">
+              <strong>Summary:</strong>
+              <ul>
+                ${ruleBased.summaryPoints.map(point => `<li>${escapeHtml(point)}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        // Rule-based recommendations
+        if (ruleBased && Array.isArray(ruleBased.recommendations) && ruleBased.recommendations.length > 0) {
+          html += `
+            <div class="insights-recommendations">
+              <strong>Recommendations:</strong>
+              <ul>
+                ${ruleBased.recommendations.map(rec => `<li>${escapeHtml(rec)}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        // AI-polished summary
+        if (aiPolished && aiPolished.summaryText) {
+          html += `
+            <div class="ai-polished-box">
+              <strong>AI-polished summary:</strong>
+              <div style="margin-top: 8px;">${escapeHtml(aiPolished.summaryText)}</div>
+            </div>
+          `;
+        }
+
+        if (!html) {
+          html = '<div class="empty-state">No insights available at this time.</div>';
+        }
+
+        insightsDisplayEl.innerHTML = html;
+      } catch (err) {
+        console.error('Error fetching insights:', err);
+        insightsDisplayEl.innerHTML = `
+          <div class="error-message">
+            Could not load insights right now. Please try again later.
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Show Insights';
+      }
+    }
+
+    // Utility: escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Refresh graph data and re-render
+    async function refreshGraph() {
+      const { graph, stats } = await fetchGraphData();
+      if (graph) {
+        renderGraph(graph);
+      }
+      if (stats) {
+        renderStats(stats);
+      }
+    }
+
+    // Fetch admin config and update mode badge
+    async function updateModeBadge() {
+      const badgeEl = document.getElementById('mode-badge');
+      try {
+        const res = await fetch('/admin/config');
+        if (!res.ok) {
+          throw new Error('Failed to fetch config');
+        }
+        const payload = await res.json();
+        if (payload.status === 'ok' && payload.config) {
+          const isAnonymized = payload.config.anonymizeUsers === true;
+          badgeEl.textContent = isAnonymized ? 'Mode: Anonymized' : 'Mode: Real IDs';
+          badgeEl.className = isAnonymized ? 'mode-badge anonymized' : 'mode-badge';
+          badgeEl.style.display = 'inline-block';
+        }
+      } catch (err) {
+        // Silently fail - just don't show the badge
+        console.error('Error fetching admin config:', err);
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    // Load a demo scenario
+    async function loadDemoScenario(scenarioName) {
+      const statusEl = document.getElementById('demo-status');
+      const buttons = ['demo-healthy-btn', 'demo-siloed-btn', 'demo-overloaded-btn'];
+      
+      // Disable all demo buttons
+      buttons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Loading...';
+        }
+      });
+      
+      statusEl.textContent = `Loading ${scenarioName} scenario...`;
+      
+      try {
+        const res = await fetch('/demo/seed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            scenario: scenarioName,
+            clearExisting: true,
+          }),
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.reason || 'Failed to seed scenario');
+        }
+        
+        const payload = await res.json();
+        
+        if (payload.status === 'ok' && payload.seeded) {
+          statusEl.textContent = `Loaded ${payload.seeded.messageCount} messages`;
+          
+          // Refresh the graph after seeding
+          await refreshGraph();
+          
+          // Clear status message after a few seconds
+          setTimeout(() => {
+            statusEl.textContent = '';
+          }, 3000);
+        } else {
+          throw new Error('Unexpected response format');
+        }
+      } catch (err) {
+        console.error('Error loading demo scenario:', err);
+        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.style.color = '#f44336';
+      } finally {
+        // Re-enable all demo buttons
+        buttons.forEach(btnId => {
+          const btn = document.getElementById(btnId);
+          if (btn) {
+            btn.disabled = false;
+            // Restore button labels
+            if (btnId === 'demo-healthy-btn') btn.textContent = 'Load Healthy';
+            if (btnId === 'demo-siloed-btn') btn.textContent = 'Load Siloed';
+            if (btnId === 'demo-overloaded-btn') btn.textContent = 'Load Overloaded';
+          }
+        });
+      }
+    }
+
+    // Initialize on page load
+    async function init() {
+      // Update mode badge
+      await updateModeBadge();
+
+      // Load initial graph
+      await refreshGraph();
+
+      // Attach event listeners
+      document.getElementById('refresh-btn').addEventListener('click', refreshGraph);
+      document.getElementById('fit-btn').addEventListener('click', fitGraph);
+      document.getElementById('show-insights-btn').addEventListener('click', fetchAndShowInsights);
+      
+      // Demo scenario buttons
+      document.getElementById('demo-healthy-btn').addEventListener('click', () => loadDemoScenario('healthy'));
+      document.getElementById('demo-siloed-btn').addEventListener('click', () => loadDemoScenario('siloed'));
+      document.getElementById('demo-overloaded-btn').addEventListener('click', () => loadDemoScenario('overloaded'));
     }
 
     window.addEventListener('load', init);

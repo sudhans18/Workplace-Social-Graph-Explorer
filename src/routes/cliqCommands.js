@@ -5,6 +5,9 @@ import { generateRuleBasedInsights } from '../insights/ruleBasedInsights.js';
 import { polishInsightsWithLLM } from '../ai/llmClient.js';
 import { getAppBaseUrl } from '../utils/config.js';
 import { log } from '../utils/logger.js';
+import { getFilteredMessages, extractUserIds } from '../admin/messageFilter.js';
+import { getAdminConfig } from '../admin/configStore.js';
+import { buildAnonymizationMap, anonymizeStats, anonymizeInsights } from '../admin/anonymizer.js';
 
 const router = express.Router();
 
@@ -18,14 +21,35 @@ router.post('/command', async (req, res) => {
   log('POST /cliq/command', { command: cmd, channelId, userId, args });
 
   try {
-    if (cmd === '/socialgraph') {
-      const { stats } = buildGraphFromMessages(messages);
-      const ruleBased = generateRuleBasedInsights(stats);
+    // Get filtered messages (applies retention and ignored channels)
+    const filteredMessages = getFilteredMessages(messages);
+    const config = getAdminConfig();
+    
+    // Build graph from filtered messages
+    const { nodes, stats } = buildGraphFromMessages(filteredMessages);
+    let anonymizedStats = stats;
+    
+    // Apply anonymization if enabled
+    let anonMap = null;
+    if (config.anonymizeUsers) {
+      // Collect all unique user IDs from messages and nodes
+      const userIds = extractUserIds(filteredMessages);
+      nodes.forEach(node => {
+        if (node.id && !userIds.includes(node.id)) {
+          userIds.push(node.id);
+        }
+      });
+      anonMap = buildAnonymizationMap(userIds);
+      anonymizedStats = anonymizeStats(stats, anonMap);
+    }
 
-      const n = stats.nodeCount || 0;
-      const m = stats.edgeCount || 0;
-      const clusterCount = Array.isArray(stats.clusters) ? stats.clusters.length : 0;
-      const top = Array.isArray(stats.topConnectors) ? stats.topConnectors.map(c => c.id) : [];
+    if (cmd === '/socialgraph') {
+      const ruleBased = generateRuleBasedInsights(anonymizedStats);
+
+      const n = anonymizedStats.nodeCount || 0;
+      const m = anonymizedStats.edgeCount || 0;
+      const clusterCount = Array.isArray(anonymizedStats.clusters) ? anonymizedStats.clusters.length : 0;
+      const top = Array.isArray(anonymizedStats.topConnectors) ? anonymizedStats.topConnectors.map(c => c.id) : [];
       const siloClusters = ruleBased?.meta?.possibleSilos || [];
 
       const topList = top.slice(0, 3).join(', ');
@@ -50,18 +74,27 @@ router.post('/command', async (req, res) => {
     }
 
     if (cmd === '/insights') {
-      const { stats } = buildGraphFromMessages(messages);
-      const ruleBased = generateRuleBasedInsights(stats);
+      let ruleBased = generateRuleBasedInsights(anonymizedStats);
 
       let aiPolished = null;
       try {
-        aiPolished = await polishInsightsWithLLM(ruleBased, stats);
+        aiPolished = await polishInsightsWithLLM(ruleBased, anonymizedStats);
         log('Cliq /insights AI polish', aiPolished ? 'used' : 'skipped');
       } catch (_err) {
         log('Cliq /insights AI polish failure, skipped');
       }
 
-      const bullets = (aiPolished?.bullets?.length ? aiPolished.bullets : ruleBased.summaryPoints) || [];
+      let insights = {
+        ruleBased,
+        aiPolished: aiPolished || null,
+      };
+
+      // Apply anonymization if enabled
+      if (config.anonymizeUsers && anonMap) {
+        insights = anonymizeInsights(insights, anonMap);
+      }
+
+      const bullets = (insights.aiPolished?.bullets?.length ? insights.aiPolished.bullets : insights.ruleBased.summaryPoints) || [];
       const text = bullets.length ? bullets.map(b => `- ${b}`).join('\n') : 'No insights available yet.';
 
       return res.json({

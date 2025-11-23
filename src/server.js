@@ -10,6 +10,8 @@ import insightsRouter from './routes/insights.js';
 import { log } from './utils/logger.js';
 import cliqCommandsRouter from './routes/cliqCommands.js';
 import digestRouter from './routes/digest.js';
+import adminRouter from './routes/admin.js';
+import demoRouter from './routes/demo.js';
 import { getAppBaseUrl } from './utils/config.js';
 
 dotenv.config();
@@ -32,6 +34,8 @@ app.use(graphRouter);
 app.use(insightsRouter);
 app.use('/cliq', cliqCommandsRouter);
 app.use(digestRouter);
+app.use('/admin', adminRouter);
+app.use('/demo', demoRouter);
 
 app.use(express.static(path.join(__dirname, '../public')));
 
