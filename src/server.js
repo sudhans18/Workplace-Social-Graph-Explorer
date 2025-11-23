@@ -47,6 +47,11 @@ app.get('/', (req, res) => {
   res.send('Workplace Social Graph Explorer API is running.');
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+
 app.listen(PORT, () => {
   log(`Server listening on http://localhost:${PORT}`);
   log('APP_BASE_URL', getAppBaseUrl());
