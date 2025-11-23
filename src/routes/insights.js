@@ -34,6 +34,8 @@ router.get('/insights/latest', async (req, res) => {
     let insights = {
       ruleBased,
       aiPolished: aiPolished || null,
+      orgHealthScore: stats?.orgHealth?.score ?? null,
+      orgHealthComponents: stats?.orgHealth?.components ?? null,
     };
 
     // Apply anonymization if enabled

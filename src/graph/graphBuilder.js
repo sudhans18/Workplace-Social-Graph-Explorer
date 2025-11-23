@@ -4,6 +4,8 @@ import {
   computeBetweennessCentrality,
 } from './metrics.js';
 import { detectCommunities } from './clustering.js';
+import { computeOrgHealthScore } from '../insights/orgHealthScore.js';
+import { log } from '../utils/logger.js';
 
 function summarizeClusters(clusterAssignments) {
   const summaryMap = new Map();
@@ -105,5 +107,9 @@ export function buildGraphFromMessages(messages) {
     clusters,
   };
 
-  return { nodes, edges, stats };
+  const orgHealth = computeOrgHealthScore(stats);
+  const statsWithHealth = { ...stats, orgHealth };
+  log('Org Health Score computed in builder:', orgHealth.score);
+
+  return { nodes, edges, stats: statsWithHealth };
 }

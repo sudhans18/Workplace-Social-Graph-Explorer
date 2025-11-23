@@ -4,8 +4,12 @@ export function buildWeeklyDigest(stats, insights) {
   const topConnectors = Array.isArray(stats?.topConnectors) ? stats.topConnectors.map(t => t.id) : [];
   const clusters = Array.isArray(stats?.clusters) ? stats.clusters : [];
   const ruleBased = insights?.ruleBased || { summaryPoints: [], recommendations: [], meta: {} };
+  const orgHealthScore = stats?.orgHealth?.score ?? null;
 
-  const summaryLine = `Collaboration snapshot shows ${nodeCount} ${nodeCount === 1 ? 'user' : 'users'} and ${edgeCount} interaction ${edgeCount === 1 ? 'link' : 'links'}.`;
+  const summaryLineBase = `Collaboration snapshot shows ${nodeCount} ${nodeCount === 1 ? 'user' : 'users'} and ${edgeCount} interaction ${edgeCount === 1 ? 'link' : 'links'}.`;
+  const summaryLine = orgHealthScore == null
+    ? summaryLineBase
+    : `${summaryLineBase} | Current Org Health Score: ${orgHealthScore}/100`;
 
   const keyHighlights = [];
   if (topConnectors.length) {
@@ -32,5 +36,6 @@ export function buildWeeklyDigest(stats, insights) {
     summaryLine,
     keyHighlights,
     recommendations,
+    orgHealthScore,
   };
 }

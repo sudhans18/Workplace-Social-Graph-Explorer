@@ -383,6 +383,15 @@
             </div>
           </div>
 
+          <!-- Org Health Score -->
+          <div class="section">
+            <h2 class="section-title">Org Health Score</h2>
+            <div class="section-content">
+              <p id="org-health-score" style="font-size: 20px; font-weight: 700;">Loading...</p>
+              <div id="org-health-components" style="font-size: 12px; color: #666;"></div>
+            </div>
+          </div>
+
           <!-- Top Connectors -->
           <div class="section">
             <h2 class="section-title">Top Connectors</h2>
@@ -707,12 +716,39 @@
       if (!stats) {
         document.getElementById('stat-node-count').textContent = '-';
         document.getElementById('stat-edge-count').textContent = '-';
+        const scoreEl = document.getElementById('org-health-score');
+        const compEl = document.getElementById('org-health-components');
+        if (scoreEl) scoreEl.textContent = 'Not available';
+        if (compEl) compEl.textContent = '';
         return;
       }
 
       // Update summary stats
       document.getElementById('stat-node-count').textContent = stats.nodeCount || 0;
       document.getElementById('stat-edge-count').textContent = stats.edgeCount || 0;
+
+      // Update Org Health Score
+      const scoreEl = document.getElementById('org-health-score');
+      const compEl = document.getElementById('org-health-components');
+      const score = stats?.orgHealth?.score;
+      const components = stats?.orgHealth?.components;
+      if (typeof score === 'number') {
+        scoreEl.textContent = `Score: ${score} / 100`;
+        // Color coding
+        let color = '#ef5350'; // red
+        if (score >= 80) color = '#43a047'; // green
+        else if (score >= 50) color = '#f9a825'; // yellow
+        scoreEl.style.color = color;
+        if (components) {
+          compEl.textContent = `Connectivity ${components.connectivity ?? 0} | Balance ${components.balance ?? 0} | Anti-silo ${components.antiSilo ?? 0} | Cross-team ${components.crossTeam ?? 0}`;
+        } else {
+          compEl.textContent = '';
+        }
+      } else {
+        scoreEl.textContent = 'Not available';
+        scoreEl.style.color = '#666';
+        compEl.textContent = '';
+      }
 
       // Update top connectors
       const topConnectorsEl = document.getElementById('top-connectors-content');
