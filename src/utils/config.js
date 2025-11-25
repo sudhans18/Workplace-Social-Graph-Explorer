@@ -1,3 +1,9 @@
 export function getAppBaseUrl() {
-  return process.env.APP_BASE_URL || 'http://localhost:3000';
+  const envUrl = process.env.APP_BASE_URL;
+  if (envUrl && envUrl.trim().length > 0) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  const port = process.env.PORT || 3000;
+  return `http://localhost:${port}`;
 }
